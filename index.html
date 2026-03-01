@@ -1,100 +1,676 @@
 <!doctype html>
 <html lang="en">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Flashcards</title>
-<style>
-body{
-font-family:Arial;
-background:#f2f2f7;
-display:flex;
-justify-content:center;
-align-items:center;
-height:100vh;
-margin:0;
-}
-.card{
-background:white;
-padding:30px;
-border-radius:15px;
-box-shadow:0 10px 20px rgba(0,0,0,0.1);
-width:320px;
-text-align:center;
-}
-button{
-padding:10px;
-margin-top:10px;
-border:none;
-border-radius:10px;
-background:#007aff;
-color:white;
-font-weight:bold;
-cursor:pointer;
-width:100%;
-}
-textarea,input{
-width:100%;
-padding:10px;
-margin-top:10px;
-border-radius:10px;
-border:1px solid #ccc;
-}
-</style>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#0A84FF" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+  <meta name="apple-mobile-web-app-title" content="Flashcards" />
+
+  <link rel="manifest" href="manifest.webmanifest" />
+  <title>Flashcards (Anki-style)</title>
+
+  <style>
+    :root{
+      --bg:#F2F2F7; --card:#FFFFFF; --text:#111; --sub:#6B6B6B;
+      --blue:#0A84FF; --green:#34C759; --orange:#FF9F0A; --red:#FF3B30;
+      --border: rgba(0,0,0,0.08); --shadow: 0 10px 28px rgba(0,0,0,0.08);
+      --radius: 18px;
+      --safe-top: env(safe-area-inset-top); --safe-bottom: env(safe-area-inset-bottom);
+    }
+    *{ box-sizing:border-box; }
+    html,body{ height:100%; }
+    body{
+      margin:0; background:var(--bg); color:var(--text);
+      font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","Segoe UI",Roboto,Arial,sans-serif;
+    }
+    .app{ min-height:100vh; padding-top:calc(14px + var(--safe-top)); padding-bottom:calc(14px + var(--safe-bottom));
+      display:flex; justify-content:center; }
+    .phone{ width:min(430px, 100%); padding:0 14px; }
+    header{
+      position: sticky; top:0; z-index:10;
+      padding: 10px 0 12px;
+      background: linear-gradient(to bottom, rgba(242,242,247,0.95), rgba(242,242,247,0.75));
+      backdrop-filter: blur(12px);
+    }
+    .titleRow{ display:flex; align-items:flex-end; justify-content:space-between; gap:10px; padding: 6px 2px; }
+    h1{ margin:0; font-size:28px; letter-spacing:-0.02em; line-height:1.1; }
+    .pill{
+      font-size:12px; padding:6px 10px; border-radius:999px;
+      background: rgba(10,132,255,0.12); color: var(--blue);
+      border:1px solid rgba(10,132,255,0.18); white-space:nowrap;
+    }
+    .tabs{ display:flex; gap:10px; padding: 8px 2px 0; }
+    .tab{
+      flex:1; padding:10px 12px; border-radius:14px; border:1px solid var(--border);
+      background: rgba(255,255,255,0.65); cursor:pointer; font-weight:900; font-size:14px;
+    }
+    .tab.active{
+      background:#fff; box-shadow:0 8px 18px rgba(0,0,0,0.06);
+      border-color: rgba(10,132,255,0.18); color: var(--blue);
+    }
+
+    .card{ background:var(--card); border:1px solid var(--border); border-radius:var(--radius); box-shadow:var(--shadow); overflow:hidden; }
+    .section{ margin-top:12px; }
+    .cardHeader{ padding:14px 14px 10px; display:flex; justify-content:space-between; align-items:center; gap:10px; }
+    .cardHeader h2{ margin:0; font-size:15px; color:var(--sub); font-weight:800; }
+    .btn{
+      border:none; border-radius:14px; padding:10px 12px; font-size:14px; font-weight:900;
+      cursor:pointer; background: rgba(0,0,0,0.05); color:var(--text);
+    }
+    .btnPrimary{ background:var(--blue); color:#fff; }
+    .btnDanger{ background: rgba(255,59,48,0.12); color: var(--red); border:1px solid rgba(255,59,48,0.18); }
+    .btnSmall{ padding:8px 10px; border-radius:12px; font-size:13px; }
+
+    .studyCard{ padding:14px; }
+    .prompt{ font-size:18px; line-height:1.35; margin:0 0 10px 0; word-break:break-word; }
+    .answer{
+      margin-top:10px; padding:12px; border-radius:14px;
+      border:1px dashed rgba(0,0,0,0.18); background: rgba(0,0,0,0.02);
+      display:none; white-space:pre-wrap; word-break:break-word;
+    }
+    .metaRow{ margin-top:10px; display:flex; justify-content:space-between; align-items:center; gap:10px; color:var(--sub); font-size:12px; }
+    .filters{ display:flex; gap:8px; flex-wrap:wrap; margin-top:10px; }
+    .chip{
+      border:1px solid var(--border); background:#fff; border-radius:999px;
+      padding:8px 10px; font-size:12px; font-weight:900; cursor:pointer;
+    }
+    .chip.active{ border-color: rgba(10,132,255,0.25); color: var(--blue); background: rgba(10,132,255,0.08); }
+
+    .gradeRow{ display:none; margin-top:12px; gap:8px; flex-wrap:wrap; }
+    .grade{
+      flex:1 1 45%; border-radius:14px; padding:12px 12px;
+      border:1px solid var(--border); background:#fff; cursor:pointer; font-weight:900; text-align:center;
+    }
+    .gAgain{ border-color: rgba(255,59,48,0.25); }
+    .gHard{ border-color: rgba(255,159,10,0.25); }
+    .gGood{ border-color: rgba(52,199,89,0.25); }
+    .gEasy{ border-color: rgba(10,132,255,0.25); }
+
+    .editor{ padding:14px; display:flex; flex-direction:column; gap:10px; }
+    textarea,input[type="text"]{
+      width:100%; border-radius:14px; border:1px solid var(--border); background:#F7F7FA;
+      padding:12px 12px; font-size:15px; outline:none;
+    }
+    textarea{ min-height:92px; resize:vertical; }
+    select{
+      width:100%; border-radius:14px; border:1px solid var(--border); background:#F7F7FA;
+      padding:12px 12px; font-size:15px; outline:none;
+    }
+    .row{ display:flex; gap:10px; flex-wrap:wrap; }
+    .row > *{ flex:1 1 160px; }
+
+    .list{ display:flex; flex-direction:column; }
+    .item{ border-top:1px solid var(--border); padding:12px 14px; display:flex; justify-content:space-between; gap:10px; align-items:flex-start; }
+    .itemTitle{ margin:0; font-weight:900; font-size:15px; line-height:1.25; word-break:break-word; }
+    .itemSub{ margin-top:4px; color:var(--sub); font-size:12px; }
+    .hint{
+      margin-top:12px; padding:12px 14px; border-radius:var(--radius);
+      background: rgba(0,0,0,0.04); color:var(--sub); font-size:13px; line-height:1.35;
+    }
+    .hidden{ display:none !important; }
+  </style>
 </head>
+
 <body>
+<div class="app">
+  <div class="phone">
+    <header>
+      <div class="titleRow">
+        <h1>Flashcards</h1>
+        <div class="pill" id="statusPill">…</div>
+      </div>
+      <div class="tabs">
+        <button class="tab active" id="tabStudy">Study</button>
+        <button class="tab" id="tabDeck">Deck</button>
+      </div>
+    </header>
 
-<div class="card">
-<h2 id="question">Add cards below</h2>
-<p id="answer" style="display:none;"></p>
+    <!-- STUDY -->
+    <section class="section card" id="studySection">
+      <div class="cardHeader">
+        <h2>Today’s queue</h2>
+        <div class="row" style="gap:8px; justify-content:flex-end;">
+          <button class="btn btnSmall" id="btnResetDue" title="Make selected cards due now">Reset due</button>
+          <button class="btn btnSmall btnPrimary" id="btnReveal">Show answer</button>
+        </div>
+      </div>
 
-<button onclick="showAnswer()">Show Answer</button>
-<button onclick="nextCard()">Next Card</button>
+      <div class="studyCard">
+        <div class="filters" id="filterChips">
+          <button class="chip active" data-level="L1">L1</button>
+          <button class="chip active" data-level="L2">L2</button>
+          <button class="chip active" data-level="L3">L3</button>
+        </div>
 
-<hr>
+        <p class="prompt" id="prompt">Loading…</p>
+        <div class="answer" id="answer"></div>
 
-<input id="q" placeholder="Question">
-<textarea id="a" placeholder="Answer"></textarea>
-<button onclick="addCard()">Add Card</button>
+        <div class="metaRow" id="metaRow">
+          <span id="metaLeft">—</span>
+          <span id="metaRight">—</span>
+        </div>
+
+        <div class="gradeRow" id="gradeRow">
+          <button class="grade gAgain" data-grade="again">Again</button>
+          <button class="grade gHard" data-grade="hard">Hard</button>
+          <button class="grade gGood" data-grade="good">Good</button>
+          <button class="grade gEasy" data-grade="easy">Easy</button>
+        </div>
+
+        <div class="hint">
+          iPhone install: Safari → Share → <b>Add to Home Screen</b>.
+          <br/>Tip: Keep L2+L3 selected to “mix” difficulty.
+        </div>
+      </div>
+    </section>
+
+    <!-- DECK -->
+    <section class="section card hidden" id="deckSection">
+      <div class="cardHeader">
+        <h2>Your deck</h2>
+        <div class="row" style="gap:8px; justify-content:flex-end;">
+          <button class="btn btnSmall" id="btnExport">Export CSV</button>
+          <button class="btn btnSmall" id="btnImport">Import CSV</button>
+          <button class="btn btnSmall" id="btnLoadACS">Load ACS deck (L2+L3)</button>
+          <button class="btn btnSmall btnDanger" id="btnWipe">Wipe all</button>
+        </div>
+      </div>
+
+      <div class="editor">
+        <input type="text" id="newFront" placeholder="Front (Question)" />
+        <textarea id="newBack" placeholder="Back (Answer)"></textarea>
+        <div class="row">
+          <select id="newLevel" title="Difficulty level">
+            <option value="L1">Level 1 (basic)</option>
+            <option value="L2" selected>Level 2 (boards)</option>
+            <option value="L3">Level 3 (traps/advanced)</option>
+          </select>
+          <input type="text" id="newTags" placeholder="Tags (comma) e.g., ACS, STEMI, meds" />
+        </div>
+        <div class="row">
+          <button class="btn btnPrimary" id="btnAdd">Add card</button>
+          <button class="btn" id="btnMakeDue">Make all due now</button>
+        </div>
+        <div class="hint">
+          CSV format: <b>front,back,level,tags</b>. Level must be L1/L2/L3. Tags comma-separated.
+        </div>
+      </div>
+
+      <div class="list" id="deckList"></div>
+    </section>
+  </div>
 </div>
 
 <script>
-let cards = JSON.parse(localStorage.getItem("cards")) || [];
-let current = 0;
-
-function showCard(){
-if(cards.length===0){
-document.getElementById("question").innerText="No cards yet";
-return;
-}
-document.getElementById("question").innerText=cards[current].q;
-document.getElementById("answer").innerText=cards[current].a;
-document.getElementById("answer").style.display="none";
+/* -------------------- PWA offline (service worker) -------------------- */
+if ("serviceWorker" in navigator) {
+  window.addEventListener("load", () => navigator.serviceWorker.register("./sw.js"));
 }
 
-function showAnswer(){
-document.getElementById("answer").style.display="block";
+/* -------------------- Storage + Anki-like scheduling ------------------- */
+/*
+  Simple SM-2-ish scheduling (good enough for boards):
+  card fields:
+    ease (EF) default 2.5 (min 1.3 max 3.0)
+    intervalDays
+    reps
+    due (ms)
+    level: L1/L2/L3
+    tags: ["ACS","STEMI",...]
+  Grading:
+    again: reps=0, interval=0, due=+10min, EF-0.20
+    hard:  reps++, interval=max(1, round(max(1,interval)*1.2)), due=+interval, EF-0.15
+    good:  reps++, interval = (reps==1?1 : reps==2?3 : round(interval*EF)), due=+interval, EF+0.00
+    easy:  reps++, interval = (reps==1?2 : reps==2?4 : round(interval*EF*1.3)), due=+interval, EF+0.15
+*/
+const KEY = "flashcards_srs_v2";
+const DAY = 24*60*60*1000;
+const now = () => Date.now();
+
+function clampEF(x){ return Math.max(1.3, Math.min(3.0, x)); }
+
+function loadDeck(){
+  try{ return JSON.parse(localStorage.getItem(KEY)) ?? []; } catch { return []; }
+}
+function saveDeck(deck){ localStorage.setItem(KEY, JSON.stringify(deck)); }
+
+function makeCard(front, back, level="L2", tagsStr=""){
+  const tags = tagsStr.split(",").map(s=>s.trim()).filter(Boolean);
+  return {
+    id: (crypto.randomUUID ? crypto.randomUUID() : String(Date.now()+Math.random())),
+    front: String(front ?? "").trim(),
+    back: String(back ?? "").trim(),
+    level,
+    tags,
+    createdAt: now(),
+    ease: 2.5,
+    intervalDays: 0,
+    reps: 0,
+    due: now()
+  };
 }
 
-function nextCard(){
-if(cards.length===0) return;
-current=(current+1)%cards.length;
-showCard();
+function schedule(card, grade){
+  let ef = card.ease ?? 2.5;
+  let reps = card.reps ?? 0;
+  let interval = card.intervalDays ?? 0;
+
+  if (grade === "again"){
+    ef = clampEF(ef - 0.20);
+    reps = 0;
+    interval = 0;
+    card.due = now() + 10*60*1000;
+  } else if (grade === "hard"){
+    ef = clampEF(ef - 0.15);
+    reps = reps + 1;
+    interval = Math.max(1, Math.round(Math.max(1, interval) * 1.2));
+    card.due = now() + interval*DAY;
+  } else if (grade === "good"){
+    ef = clampEF(ef + 0.00);
+    reps = reps + 1;
+    if (reps === 1) interval = 1;
+    else if (reps === 2) interval = 3;
+    else interval = Math.max(1, Math.round(Math.max(1, interval) * ef));
+    card.due = now() + interval*DAY;
+  } else if (grade === "easy"){
+    ef = clampEF(ef + 0.15);
+    reps = reps + 1;
+    if (reps === 1) interval = 2;
+    else if (reps === 2) interval = 4;
+    else interval = Math.max(1, Math.round(Math.max(1, interval) * ef * 1.3));
+    card.due = now() + interval*DAY;
+  }
+
+  card.ease = ef;
+  card.reps = reps;
+  card.intervalDays = interval;
 }
 
-function addCard(){
-let q=document.getElementById("q").value;
-let a=document.getElementById("a").value;
-if(!q||!a) return;
-cards.push({q,a});
-localStorage.setItem("cards",JSON.stringify(cards));
-document.getElementById("q").value="";
-document.getElementById("a").value="";
-showCard();
+/* ------------------------------ UI logic ------------------------------ */
+const tabStudy = document.getElementById("tabStudy");
+const tabDeck  = document.getElementById("tabDeck");
+const studySection = document.getElementById("studySection");
+const deckSection  = document.getElementById("deckSection");
+
+const statusPill = document.getElementById("statusPill");
+const promptEl = document.getElementById("prompt");
+const answerEl = document.getElementById("answer");
+const btnReveal = document.getElementById("btnReveal");
+const gradeRow = document.getElementById("gradeRow");
+const metaLeft = document.getElementById("metaLeft");
+const metaRight = document.getElementById("metaRight");
+const btnResetDue = document.getElementById("btnResetDue");
+
+const chipsWrap = document.getElementById("filterChips");
+
+const newFront = document.getElementById("newFront");
+const newBack = document.getElementById("newBack");
+const newLevel = document.getElementById("newLevel");
+const newTags  = document.getElementById("newTags");
+
+const btnAdd = document.getElementById("btnAdd");
+const btnMakeDue = document.getElementById("btnMakeDue");
+const deckList = document.getElementById("deckList");
+const btnExport = document.getElementById("btnExport");
+const btnImport = document.getElementById("btnImport");
+const btnLoadACS = document.getElementById("btnLoadACS");
+const btnWipe = document.getElementById("btnWipe");
+
+let deck = loadDeck();
+let current = null;
+
+const activeLevels = new Set(["L1","L2","L3"]);
+
+function setTab(which){
+  const study = which === "study";
+  tabStudy.classList.toggle("active", study);
+  tabDeck.classList.toggle("active", !study);
+  studySection.classList.toggle("hidden", !study);
+  deckSection.classList.toggle("hidden", study);
+  if (study) showNextCard();
+  else renderDeckList();
+}
+tabStudy.addEventListener("click", () => setTab("study"));
+tabDeck.addEventListener("click", () => setTab("deck"));
+
+chipsWrap.addEventListener("click", (e)=>{
+  const b = e.target.closest("button[data-level]");
+  if(!b) return;
+  const lvl = b.dataset.level;
+  if (activeLevels.has(lvl)) activeLevels.delete(lvl);
+  else activeLevels.add(lvl);
+  b.classList.toggle("active", activeLevels.has(lvl));
+  showNextCard();
+});
+
+function dueCards(){
+  const t = now();
+  return deck.filter(c =>
+    (c.due ?? 0) <= t &&
+    c.front && c.back &&
+    activeLevels.has(c.level ?? "L2")
+  );
 }
 
-showCard();
+function updateStatus(){
+  const due = dueCards().length;
+  const total = deck.length;
+  const selected = [...activeLevels].sort().join("+") || "none";
+  statusPill.textContent = `${due} due • ${total} total • ${selected}`;
+}
+
+function showNextCard(){
+  updateStatus();
+  const due = dueCards();
+
+  if (deck.length === 0){
+    promptEl.textContent = "Deck is empty. Go to Deck tab → Load ACS deck or add cards.";
+    answerEl.style.display = "none";
+    gradeRow.style.display = "none";
+    metaLeft.textContent = "—";
+    metaRight.textContent = "—";
+    btnReveal.disabled = true;
+    current = null;
+    return;
+  }
+
+  if (activeLevels.size === 0){
+    promptEl.textContent = "Select at least one level (L1/L2/L3) above.";
+    answerEl.style.display = "none";
+    gradeRow.style.display = "none";
+    btnReveal.disabled = true;
+    current = null;
+    return;
+  }
+
+  if (due.length === 0){
+    promptEl.textContent = "No cards due الآن ✅";
+    answerEl.style.display = "none";
+    gradeRow.style.display = "none";
+    metaLeft.textContent = "Tip: use Reset due or select more levels.";
+    metaRight.textContent = "";
+    btnReveal.disabled = true;
+    current = null;
+    return;
+  }
+
+  btnReveal.disabled = false;
+  due.sort((a,b) => (a.due ?? 0) - (b.due ?? 0));
+  current = due[0];
+
+  promptEl.textContent = current.front;
+  answerEl.textContent = current.back;
+  answerEl.style.display = "none";
+  gradeRow.style.display = "none";
+  btnReveal.textContent = "Show answer";
+
+  const ef = (current.ease ?? 2.5).toFixed(2);
+  const tags = (current.tags ?? []).slice(0,6).join(", ");
+  metaLeft.textContent = `${current.level ?? "L2"} • EF ${ef} • reps ${current.reps ?? 0} • int ${current.intervalDays ?? 0}d`;
+  metaRight.textContent = tags ? `# ${tags}` : "";
+}
+
+btnReveal.addEventListener("click", () => {
+  if (!current) return;
+  const hidden = answerEl.style.display === "none";
+  if (hidden){
+    answerEl.style.display = "block";
+    gradeRow.style.display = "flex";
+    btnReveal.textContent = "Answer shown";
+  }
+});
+
+gradeRow.addEventListener("click", (e) => {
+  const btn = e.target.closest("button[data-grade]");
+  if (!btn || !current) return;
+  const grade = btn.dataset.grade;
+  const idx = deck.findIndex(c => c.id === current.id);
+  if (idx === -1) return;
+  schedule(deck[idx], grade);
+  saveDeck(deck);
+  showNextCard();
+});
+
+btnResetDue.addEventListener("click", () => {
+  const t = now();
+  deck = deck.map(c => activeLevels.has(c.level ?? "L2") ? ({...c, due:t}) : c);
+  saveDeck(deck);
+  showNextCard();
+});
+
+/* -------------------------- Deck management -------------------------- */
+function renderDeckList(){
+  updateStatus();
+  deckList.innerHTML = "";
+
+  if (deck.length === 0){
+    const empty = document.createElement("div");
+    empty.className = "item";
+    empty.innerHTML = `<div>
+      <p class="itemTitle">No cards yet.</p>
+      <div class="itemSub">Use “Load ACS deck (L2+L3)” or add your own cards.</div>
+    </div>`;
+    deckList.appendChild(empty);
+    return;
+  }
+
+  const sorted = [...deck].sort((a,b)=> (b.createdAt ?? 0) - (a.createdAt ?? 0));
+  for (const c of sorted){
+    const item = document.createElement("div");
+    item.className = "item";
+    const dueStr = new Date(c.due ?? now()).toLocaleString(undefined, { dateStyle:"medium", timeStyle:"short" });
+    const tagStr = (c.tags ?? []).slice(0,8).join(", ");
+
+    item.innerHTML = `
+      <div style="flex:1; min-width:0;">
+        <p class="itemTitle"></p>
+        <div class="itemSub">${c.level ?? "L2"} • Due: ${dueStr} • EF ${(c.ease ?? 2.5).toFixed(2)} • reps ${c.reps ?? 0}${tagStr ? " • #" + tagStr : ""}</div>
+      </div>
+      <button class="btn btnSmall btnDanger">Delete</button>
+    `;
+    item.querySelector(".itemTitle").textContent = c.front;
+    item.querySelector("button").addEventListener("click", () => {
+      deck = deck.filter(x => x.id !== c.id);
+      saveDeck(deck);
+      renderDeckList();
+    });
+
+    deckList.appendChild(item);
+  }
+}
+
+btnAdd.addEventListener("click", () => {
+  const f = newFront.value.trim();
+  const b = newBack.value.trim();
+  if (!f || !b) return;
+  deck.unshift(makeCard(f, b, newLevel.value, newTags.value));
+  saveDeck(deck);
+  newFront.value = ""; newBack.value = ""; newTags.value = "";
+  renderDeckList();
+});
+
+btnMakeDue.addEventListener("click", () => {
+  const t = now();
+  deck = deck.map(c => ({...c, due:t}));
+  saveDeck(deck);
+  renderDeckList();
+});
+
+/* ----------------------- Import / Export CSV ------------------------ */
+btnExport.addEventListener("click", () => {
+  const lines = ["front,back,level,tags"];
+  for (const c of deck){
+    lines.push(`${JSON.stringify(c.front ?? "")},${JSON.stringify(c.back ?? "")},${JSON.stringify(c.level ?? "L2")},${JSON.stringify((c.tags ?? []).join(","))}`);
+  }
+  const blob = new Blob([lines.join("\n")], {type:"text/csv"});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url; a.download = "flashcards_deck.csv";
+  document.body.appendChild(a); a.click(); a.remove();
+  URL.revokeObjectURL(url);
+});
+
+btnImport.addEventListener("click", async () => {
+  const inp = document.createElement("input");
+  inp.type = "file"; inp.accept = ".csv,text/csv";
+  inp.onchange = async () => {
+    const file = inp.files?.[0];
+    if(!file) return;
+    const text = await file.text();
+    const rows = parseCSV(text);
+    let start = 0;
+    if (rows[0] && (rows[0][0] ?? "").toLowerCase() === "front") start = 1;
+
+    let added = 0;
+    for (let i=start; i<rows.length; i++){
+      const [f,b,lvl,tags] = rows[i];
+      if (!f || !b) continue;
+      const level = ["L1","L2","L3"].includes((lvl ?? "").trim()) ? (lvl ?? "L2").trim() : "L2";
+      deck.unshift(makeCard(f, b, level, tags ?? ""));
+      added++;
+    }
+    saveDeck(deck);
+    alert(`Imported ${added} cards.`);
+    renderDeckList();
+  };
+  inp.click();
+});
+
+function parseCSV(text){
+  const rows = [];
+  let row = [], cur = "", inQ = false;
+  for (let i=0; i<text.length; i++){
+    const ch = text[i], nxt = text[i+1];
+    if (inQ){
+      if (ch === '"' && nxt === '"'){ cur += '"'; i++; }
+      else if (ch === '"'){ inQ = false; }
+      else cur += ch;
+    } else {
+      if (ch === '"') inQ = true;
+      else if (ch === ','){ row.push(cur); cur=""; }
+      else if (ch === '\n'){ row.push(cur); rows.push(row); row=[]; cur=""; }
+      else if (ch === '\r'){}
+      else cur += ch;
+    }
+  }
+  row.push(cur);
+  if (row.length > 1 || row[0] !== "") rows.push(row);
+  return rows.map(r => r.map(x => (x ?? "").trim()));
+}
+
+/* ----------------------------- ACS Deck ----------------------------- */
+/* Level 2 + Level 3 mix, original content (not copied from any book). */
+function loadACSDeck_L2L3(){
+  const acs = [
+    // ===== L2 Core workflow =====
+    ["Chest pain + suspected ACS: first 10 minutes?", "ABCs, vitals, IV access, 12-lead ECG within 10 min, troponin, focused exam for shock/HF, start antiplatelet/anticoag per pathway.", "L2", "ACS,workflow"],
+    ["NSTEMI vs unstable angina difference?", "NSTEMI: troponin rise/fall (myocyte necrosis). UA: ischemic symptoms ± ECG changes but troponin negative.", "L2", "ACS,NSTEMI,UA"],
+    ["STEMI definition (practical)?", "Ischemic symptoms + persistent ST elevation in a territorial pattern (or STEMI equivalent).", "L2", "ACS,STEMI,ECG"],
+    ["STEMI primary goal?", "Rapid reperfusion: primary PCI when timely; fibrinolysis if PCI cannot be achieved in time and no contraindications.", "L2", "STEMI,reperfusion"],
+    ["Oxygen in ACS—when?", "Only if hypoxemia/resp distress/HF/shock. Avoid routine O2 if saturation is normal.", "L2", "ACS,supportive"],
+    ["Nitroglycerin helps what?", "Symptom relief and BP control; not a mortality benefit.", "L2", "ACS,nitrates"],
+    ["Nitrate contraindications (board list)?", "Hypotension/shock, RV infarct, severe AS, recent PDE-5 inhibitor (sildenafil/vardenafil ~24h; tadalafil ~48h).", "L2", "ACS,nitrates,contra"],
+    ["Beta-blocker early—when to avoid?", "Shock/low output, acute decomp HF/pulm edema, hypotension, severe bradycardia, high-grade AV block, severe bronchospasm.", "L2", "ACS,beta-blocker"],
+    ["If aspirin allergy/intolerance in ACS?", "Use clopidogrel (or other P2Y12) and consider desensitization if needed.", "L2", "ACS,antiplatelet"],
+    ["DAPT means?", "Aspirin + P2Y12 inhibitor (clopidogrel/prasugrel/ticagrelor).", "L2", "ACS,DAPT"],
+    ["Prasugrel key contraindication?", "Prior stroke/TIA (avoid).", "L2", "ACS,P2Y12"],
+    ["Anticoagulation purpose in NSTEMI/UA?", "Prevent thrombus propagation while awaiting cath/medical therapy.", "L2", "NSTEMI,anticoag"],
+    ["Fondaparinux caveat with PCI?", "Needs additional UFH during PCI to prevent catheter thrombosis.", "L2", "anticoag,PCI"],
+    ["High-intensity statin in ACS—when?", "Start ASAP unless contraindicated, regardless of baseline LDL.", "L2", "ACS,statin"],
+    ["ACEi/ARB post-MI—who benefits most?", "LVEF ≤40%, anterior MI, diabetes, CKD, HTN; start once hemodynamically stable.", "L2", "postMI,ACEI"],
+    ["Non-DHP CCB use in ACS?", "If beta-blocker contraindicated AND no LV dysfunction/HF; helps ischemia control.", "L2", "ACS,CCB"],
+    ["Avoid which combo? (your note)", "Avoid beta-blocker + diltiazem/verapamil → bradycardia/AV block.", "L2", "ACS,CCB,beta-blocker"],
+
+    // ===== L2 ECG localization =====
+    ["Inferior MI leads?", "II, III, aVF.", "L2", "ECG,localization"],
+    ["Anterior MI leads?", "V1–V4.", "L2", "ECG,localization"],
+    ["Lateral MI leads?", "I, aVL, V5–V6.", "L2", "ECG,localization"],
+    ["Posterior MI clue on standard ECG?", "ST depression V1–V3 with tall R waves; confirm with posterior leads V7–V9 (ST elevation).", "L2", "ECG,posteriorMI"],
+    ["Right ventricular MI management change?", "Preload dependent → avoid nitrates/diuretics; give IV fluids; consider right-sided leads (V4R).", "L2", "RVMI,nitrates"],
+
+    // ===== L3 Traps / nuanced decisions =====
+    ["Troponin negative early but high suspicion—what next?", "Repeat serial troponins per hs-troponin protocol + repeat ECGs; treat clinically while ruling out.", "L3", "ACS,troponin,trap"],
+    ["Dynamic ST depression + ongoing pain despite therapy (NSTEMI) → strategy?", "High risk → early invasive approach (urgent angiography) + aggressive antithrombotics as appropriate.", "L3", "NSTEMI,invasive,highrisk"],
+    ["Morphine in ACS—why ‘cautious’?", "May delay absorption of oral P2Y12 and is associated with worse outcomes; reserve for refractory pain.", "L3", "ACS,morphine,trap"],
+    ["STEMI equivalent example?", "Posterior MI; new/presumed new LBBB with ischemic features; de Winter pattern; hyperacute T waves in early occlusion.", "L3", "STEMI,equivalent"],
+    ["Inferior MI + hypotension + clear lungs + JVP high → avoid what?", "Avoid nitrates (likely RV involvement). Give fluids and reassess.", "L3", "RVMI,trap"],
+    ["Fibrinolysis: biggest ‘don’t miss’ contraindication in chest pain?", "Suspected aortic dissection—thrombolysis can be fatal.", "L3", "STEMI,lytics,contra"],
+    ["After lytics: sign of failed reperfusion?", "<50% ST resolution at 60–90 min, persistent pain, instability → rescue PCI.", "L3", "STEMI,lytics,rescue"],
+    ["NSTEMI on fondaparinux going to PCI—what must be added?", "Add UFH during PCI to prevent catheter thrombosis.", "L3", "PCI,fondaparinux,trap"],
+    ["Cocaine-associated chest pain—acute med to avoid?", "Avoid beta blockers acutely; use benzos + nitrates; manage as ACS.", "L3", "cocaine,ACS,trap"],
+    ["Non-DHP CCB in LV dysfunction—why avoid?", "Negative inotropy can worsen HF/shock.", "L3", "CCB,HF,trap"],
+    ["High-grade AV block in inferior MI—initial approach?", "Atropine/temporary pacing if unstable; evaluate ischemia/reperfusion status.", "L3", "arrhythmia,MI,trap"],
+    ["Oxygen overuse downside in MI (why avoid routine)?", "Hyperoxia may cause coronary vasoconstriction and no benefit when saturation normal.", "L3", "ACS,oxygen,trap"],
+
+    // ===== L2 meds + secondary prevention =====
+    ["Post-MI core discharge meds (high yield set)?", "Antiplatelet (DAPT if ACS/stent), high-intensity statin, beta-blocker, ACEi/ARB if indicated, +/- aldosterone antagonist, SL nitro PRN + lifestyle.", "L2", "postMI,discharge"],
+    ["Aldosterone antagonist post-MI: who?", "LVEF ≤40% + HF symptoms or diabetes, already on ACEi/ARB + beta blocker, and K/renal function acceptable.", "L2", "postMI,aldosterone"],
+    ["Cardiac rehab benefit?", "Improves function and reduces recurrent events; recommend.", "L2", "rehab,secondaryprev"],
+    ["Smoking cessation after ACS importance?", "Major reduction in recurrent events and mortality; essential.", "L2", "secondaryprev"],
+
+    // ===== More L2/L3 “boards mix” =====
+    ["NSTEMI: why serial ECGs?", "Ischemia can be dynamic; new changes upgrade risk and urgency.", "L2", "NSTEMI,ECG"],
+    ["New pulmonary edema in ACS implies what risk category?", "Very high risk → urgent invasive evaluation and supportive care.", "L3", "ACS,HF,highrisk"],
+    ["Ventricular free wall rupture timing + presentation?", "Usually 3–7 days post-MI; sudden tamponade/PEA arrest.", "L3", "MI,complications"],
+    ["Papillary muscle rupture timing + consequence?", "2–7 days post-MI; acute severe MR → flash pulmonary edema/shock.", "L3", "MI,complications"],
+    ["Post-MI VSD timing + clue?", "3–5 days; harsh holosystolic murmur + thrill, acute HF/shock.", "L3", "MI,complications"],
+    ["Early post-MI pericarditis (1–3 days) treatment idea?", "High-dose aspirin preferred; avoid routine NSAIDs early if possible.", "L3", "MI,pericarditis,trap"],
+    ["Dressler syndrome timing?", "Weeks after MI; autoimmune pericarditis (fever, pleuritic pain, effusion).", "L2", "MI,pericarditis"],
+
+    // ===== Add more cards (still compact but useful) =====
+    ["Unstable angina initial med bundle (concept)?", "Antiplatelet + anticoag + anti-ischemic therapy (BB/nitrates) + statin; then risk stratify for invasive strategy.", "L2", "UA,initial"],
+    ["GRACE score used for?", "Estimating mortality risk in ACS; helps decide invasive timing and intensity.", "L3", "GRACE,risk"],
+    ["TIMI score used for?", "Risk stratification in UA/NSTEMI for near-term events.", "L2", "TIMI,risk"],
+    ["When choose conservative (ischemia-guided) NSTEMI strategy?", "Low risk + stable, or high bleeding/comorbidity where invasive benefit low.", "L3", "NSTEMI,conservative"],
+  ];
+
+  // Convert to card objects
+  const cards = acs.map(([f,b,l,t]) => makeCard(f,b,l,t));
+
+  // Append without deleting existing deck (safer)
+  // De-duplicate by (front+level)
+  const keySet = new Set(deck.map(c => `${c.front}__${c.level}`));
+  let added = 0;
+  for (const c of cards){
+    const k = `${c.front}__${c.level}`;
+    if (keySet.has(k)) continue;
+    deck.unshift(c);
+    keySet.add(k);
+    added++;
+  }
+
+  saveDeck(deck);
+  alert(`Loaded ACS deck: added ${added} cards (L2+L3).`);
+  renderDeckList();
+}
+
+/* ----------------------------- Buttons ----------------------------- */
+btnLoadACS.addEventListener("click", loadACSDeck_L2L3);
+
+btnWipe.addEventListener("click", () => {
+  const ok = confirm("Delete all cards? This cannot be undone.");
+  if(!ok) return;
+  deck = [];
+  saveDeck(deck);
+  renderDeckList();
+});
+
+/* ----------------------------- Init ----------------------------- */
+(function init(){
+  // default: L2+L3 active (mix)
+  const chipButtons = [...chipsWrap.querySelectorAll("button[data-level]")];
+  // Start with L2+L3 on, L1 off
+  activeLevels.clear(); activeLevels.add("L2"); activeLevels.add("L3");
+  for (const b of chipButtons){
+    const lvl = b.dataset.level;
+    const on = (lvl === "L2" || lvl === "L3");
+    b.classList.toggle("active", on);
+    if (on) activeLevels.add(lvl);
+  }
+  setTab("study");
+})();
 </script>
-
 </body>
 </html>
