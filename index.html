@@ -1,8 +1,100 @@
 <!doctype html>
-<html>
-<head><meta charset="utf-8"><title>Flashcards</title></head>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Flashcards</title>
+<style>
+body{
+font-family:Arial;
+background:#f2f2f7;
+display:flex;
+justify-content:center;
+align-items:center;
+height:100vh;
+margin:0;
+}
+.card{
+background:white;
+padding:30px;
+border-radius:15px;
+box-shadow:0 10px 20px rgba(0,0,0,0.1);
+width:320px;
+text-align:center;
+}
+button{
+padding:10px;
+margin-top:10px;
+border:none;
+border-radius:10px;
+background:#007aff;
+color:white;
+font-weight:bold;
+cursor:pointer;
+width:100%;
+}
+textarea,input{
+width:100%;
+padding:10px;
+margin-top:10px;
+border-radius:10px;
+border:1px solid #ccc;
+}
+</style>
+</head>
 <body>
-<h1>Flashcards App</h1>
-<p>Your app is ready. Upload full version from ChatGPT instructions.</p>
+
+<div class="card">
+<h2 id="question">Add cards below</h2>
+<p id="answer" style="display:none;"></p>
+
+<button onclick="showAnswer()">Show Answer</button>
+<button onclick="nextCard()">Next Card</button>
+
+<hr>
+
+<input id="q" placeholder="Question">
+<textarea id="a" placeholder="Answer"></textarea>
+<button onclick="addCard()">Add Card</button>
+</div>
+
+<script>
+let cards = JSON.parse(localStorage.getItem("cards")) || [];
+let current = 0;
+
+function showCard(){
+if(cards.length===0){
+document.getElementById("question").innerText="No cards yet";
+return;
+}
+document.getElementById("question").innerText=cards[current].q;
+document.getElementById("answer").innerText=cards[current].a;
+document.getElementById("answer").style.display="none";
+}
+
+function showAnswer(){
+document.getElementById("answer").style.display="block";
+}
+
+function nextCard(){
+if(cards.length===0) return;
+current=(current+1)%cards.length;
+showCard();
+}
+
+function addCard(){
+let q=document.getElementById("q").value;
+let a=document.getElementById("a").value;
+if(!q||!a) return;
+cards.push({q,a});
+localStorage.setItem("cards",JSON.stringify(cards));
+document.getElementById("q").value="";
+document.getElementById("a").value="";
+showCard();
+}
+
+showCard();
+</script>
+
 </body>
 </html>
