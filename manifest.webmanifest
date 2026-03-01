@@ -1,6 +1,15 @@
 {
-  "name": "Flashcards",
+  "name": "Flashcards (Anki-style)",
   "short_name": "Flashcards",
   "start_url": ".",
-  "display": "standalone"
+  "display": "standalone",
+  "background_color": "#F2F2F7",
+  "theme_color": "#0A84FF",
+  "icons": [
+    {
+      "src": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='192' height='192'%3E%3Crect width='192' height='192' rx='48' fill='%230A84FF'/%3E%3Cpath d='M56 100l22 22 58-58' stroke='%23fff' stroke-width='16' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E",
+      "sizes": "192x192",
+      "type": "image/svg+xml"
+    }
+  ]
 }
