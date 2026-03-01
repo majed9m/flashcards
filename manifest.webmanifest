@@ -1,0 +1,6 @@
+{
+  "name": "Flashcards",
+  "short_name": "Flashcards",
+  "start_url": ".",
+  "display": "standalone"
+}
